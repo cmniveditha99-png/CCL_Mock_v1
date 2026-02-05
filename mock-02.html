@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CCL Practice Test - Malayalam / Dialogue</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+    <!-- LOGIN OVERLAY (candidate details) -->
+<div id="loginOverlay" class="loginOverlay" aria-modal="true" role="dialog">
+  <div class="loginCard">
+    <div class="loginBrand">CCL Practice Test</div>
+    <div class="loginTitle">Enter your details to begin</div>
+    <div class="loginSub">We’ll use this to label and save your recordings.</div>
+
+    <form id="loginForm" class="loginForm">
+      <label class="loginLabel">Full name</label>
+      <input id="fullName" class="loginInput" type="text" placeholder="Eg: Niranjan Pradeep" required />
+
+      <label class="loginLabel">Email ID</label>
+      <input id="email" class="loginInput" type="email" placeholder="Eg: name@gmail.com" required />
+
+      <label class="loginLabel">WhatsApp number</label>
+      <input id="whatsapp" class="loginInput" type="tel" placeholder="Eg: +91 98765 43210" required />
+
+      <div id="loginError" class="loginError" style="display:none;"></div>
+
+      <button class="loginBtn" type="submit">Start test</button>
+      <div class="loginHint">By continuing, you agree that your recordings will be saved for evaluation.</div>
+    </form>
+  </div>
+</div>
+
+
+  <!-- Top header row -->
+  <header class="topbar">
+    <div class="crumb">CCL Practice Test - Malayalam / <span class="crumb-light">Dialogue</span></div>
+
+    <div class="progressWrap">
+      <div class="progressText" id="progressText">1/14</div>
+      <div class="progressBar">
+        <div class="progressFill" id="progressFill"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="content">
+
+      <!-- LEFT column (instructions - NOT working buttons) -->
+      <section class="left">
+        <div class="segHeader">Segment 1</div>
+        <h1 class="title">Malayalam CCL test</h1>
+
+        <div class="block">
+          <div class="blockTitle">To hear the segment</div>
+
+          <div class="fakeBtnRow">
+            <span class="fakeBtn fakeBtnPrimary">Start</span>
+          </div>
+
+          <ul class="bullets">
+            <li>Click <b>Start</b> and speak after the chime</li>
+            <li>Click <b>Finish attempt</b> to upload</li>
+          </ul>
+
+          <div class="fakeBtnRow">
+            <span class="fakeBtn fakeBtnOutline">Finish attempt</span>
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="blockTitle">To repeat a segment</div>
+          <div class="blockSub">(One per dialogue without penalty)</div>
+
+          <div class="fakeBtnRow">
+            <span class="fakeBtn fakeBtnPrimary">Start</span>
+            <span class="againText">again</span>
+          </div>
+        </div>
+
+        <div class="statusMsg" id="statusMsg"></div>
+      </section>
+
+      <!-- RIGHT column -->
+      <section class="right">
+
+        <div class="videoCard" id="videoCard">
+          <video id="preview" autoplay playsinline muted></video>
+        </div>
+
+        <div class="waveArea">
+          <button class="speakerBtn" title="Source audio" aria-label="Source audio">
+            🔊
+          </button>
+
+          <!-- Waveform canvas -->
+          <canvas id="waveCanvas" class="waveCanvas" width="980" height="86"></canvas>
+
+          <!-- Recording canvas -->
+          <canvas id="recCanvas" class="recCanvas" width="980" height="62"></canvas>
+
+          <div class="timeRow">
+            <span id="tLeft">0:00</span>
+            <span id="tRight">0:00</span>
+          </div>
+
+          <div class="controlRow">
+            <div class="attempts">Attempts: <span id="attempts">0</span></div>
+
+            <!-- Center controls -->
+            <div class="centerControls">
+              <button id="btnStartMain" class="btnStart">Start</button>
+
+              <button id="btnFinish" class="btnFinish" style="display:none;" disabled>
+                Finish attempt
+              </button>
+
+              <div id="pillPlaying" class="pillPlaying" style="display:none;">
+                <span class="spin"></span> PLAYING SOURCE FILE
+              </div>
+
+              <div id="pillREC" class="pillREC" style="display:none;">
+                <span class="dot"></span> REC
+              </div>
+            </div>
+
+            <div class="kbIcon" title="Keyboard">⌨️</div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+
+    <!-- Bottom nav -->
+    <footer class="navBar">
+      <button class="btnNav btnPrev" id="btnPrev">← Previous</button>
+      <button class="btnNav btnNext" id="btnNext">Next →</button>
+    </footer>
+
+  </main>
+
+  <script src="mocks/mock-02.js"></script>
+<script src="script.js"></script>
+
+</body>
+</html>

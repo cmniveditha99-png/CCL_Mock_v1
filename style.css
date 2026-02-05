@@ -1,0 +1,450 @@
+:root{
+  --teal:#0f8b83;
+  --border:#e5e7eb;
+  --muted:#6b7280;
+  --wave:#f4f6f8;
+  --line:#111827;
+  --pink:#fca5a5;
+  --red:#ef4444;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background:#fff;
+  color:#111827;
+}
+
+/* topbar */
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:14px 22px;
+  border-bottom:1px solid var(--border);
+}
+.crumb{font-weight:600}
+.crumb-light{font-weight:500; color:#374151}
+.progressWrap{display:flex; align-items:center; gap:12px; min-width:260px; justify-content:flex-end;}
+.progressText{color:#374151; font-weight:600}
+.progressBar{
+  width:190px; height:10px;
+  background:#eef2f7;
+  border-radius:999px;
+  overflow:hidden;
+}
+.progressFill{
+  width: 7%;
+  height:100%;
+  background:#93a7ad;
+}
+
+/* layout */
+.page{min-height:calc(100vh - 56px); display:flex; flex-direction:column;}
+.content{
+  display:grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap:32px;
+  padding:22px 26px 0 26px;
+}
+
+/* left */
+.left .segHeader{font-weight:700; margin-top:4px; margin-bottom:8px;}
+.title{font-size:44px; line-height:1.05; margin:6px 0 18px;}
+.block{margin:18px 0 26px;}
+.blockTitle{font-weight:700; margin-bottom:12px;}
+.blockSub{color:var(--muted); margin-top:-6px; margin-bottom:12px;}
+.fakeBtnRow{display:flex; align-items:center; gap:12px; margin:10px 0;}
+.fakeBtn{
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:12px 34px;
+  border-radius:999px;
+  font-weight:700;
+  border:2px solid #cfd7df;
+  color:#111827;
+  user-select:none;
+}
+.fakeBtnPrimary{
+  background:var(--teal);
+  border-color:var(--teal);
+  color:white;
+}
+.fakeBtnOutline{
+  background:#fff;
+}
+.bullets{margin:10px 0 8px 18px;}
+.bullets li{margin:6px 0;}
+.againText{color:var(--muted);}
+.statusMsg{margin-top:14px; color:#b45309; font-weight:600;}
+
+/* right */
+.videoCard{
+  width: 320px;          /* square-ish like screenshot */
+  height: 240px;         /* adjust to match exactly */
+  border-radius: 10px;
+  background:#111;
+  overflow:hidden;
+  border: 2px solid transparent;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.10);
+  margin: 0 auto;        /* centers it in right column */
+}
+
+video{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+
+.waveArea{position:relative; margin-top:16px; padding-left:22px;}
+.speakerBtn{
+  position:absolute;
+  left:-2px; top:18px;
+  width:34px; height:34px;
+  border-radius:999px;
+  border:1px solid #d7dde5;
+  background:#fff;
+  cursor:default;
+}
+
+/* canvases */
+.waveCanvas{
+  width:100%;
+  height:86px;
+  border:1px solid #e3e7ee;
+  border-radius:8px;
+  background:var(--wave);
+  display:block;
+  margin-top:12px;
+}
+.recCanvas{
+  width:100%;
+  height:62px;
+  border:1px solid #e3e7ee;
+  border-radius:8px;
+  background:#fff;
+  display:block;
+  margin-top:14px;
+}
+
+/* time row */
+.timeRow{
+  display:flex;
+  justify-content:space-between;
+  font-size:14px;
+  margin-top:10px;
+}
+
+/* controls */
+.controlRow{
+  display:grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items:center;
+  margin-top:14px;
+}
+.attempts{color:#111827;}
+.kbIcon{justify-self:end; opacity:.7;}
+
+.centerControls{
+  justify-self:center;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.btnStart{
+  padding:12px 44px;
+  border-radius:999px;
+  border:none;
+  background:var(--teal);
+  color:#fff;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.btnFinish{
+  padding:12px 22px;
+  border-radius:999px;
+  border:1.5px solid #111827;
+  background:#fff;
+  color:#111827;
+  font-weight:800;
+  cursor:pointer;
+}
+.btnFinish:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+/* pill "PLAYING SOURCE FILE" */
+.pillPlaying{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 14px;
+  border-radius:10px;
+  border:1px solid #cfd7df;
+  color:#4b5563;
+  font-weight:700;
+  letter-spacing:.3px;
+  background:#fff;
+  animation: blink 1.2s infinite;
+}
+@keyframes blink{
+  0%, 100%{opacity:1}
+  50%{opacity:.35}
+}
+.spin{
+  width:14px; height:14px;
+  border-radius:999px;
+  border:2px solid #cfd7df;
+  border-top-color:#6b7280;
+  display:inline-block;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin{
+  to{transform:rotate(360deg)}
+}
+
+/* pill REC */
+.pillREC{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 14px;
+  border-radius:10px;
+  border:1px solid #fca5a5;
+  color:#b91c1c;
+  font-weight:800;
+  background:#fff;
+}
+.dot{
+  width:10px; height:10px;
+  border-radius:999px;
+  background: var(--red);
+  display:inline-block;
+  animation: blinkRec .9s infinite;
+}
+@keyframes blinkRec{
+  0%,100%{opacity:1}
+  50%{opacity:.3}
+}
+
+/* bottom nav */
+.navBar{
+  margin-top:18px;
+  padding:14px 26px;
+  border-top:1px solid var(--border);
+  display:flex;
+  justify-content:flex-end;
+  gap:16px;
+}
+.btnNav{
+  border-radius:999px;
+  padding:12px 18px;
+  border:1px solid #cfd7df;
+  background:#fff;
+  font-weight:700;
+}
+.btnNext{
+  background:var(--teal);
+  border-color:var(--teal);
+  color:#fff;
+}
+
+/* --- quick page transition overlay --- */
+.cclTransition {
+  position: fixed;
+  inset: 0;
+  background: white;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9998;
+  transition: opacity 140ms ease;
+}
+
+.cclTransition.on {
+  opacity: 1;
+}
+
+/* Optional: blur the page while transitioning */
+.cclBlur {
+  filter: blur(4px);
+  transition: filter 140ms ease;
+
+}
+
+/* ===== Login Overlay ===== */
+.loginOverlay{
+  position:fixed;
+  inset:0;
+  background: rgba(17,24,39,0.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:10000;
+  padding: 18px;
+}
+
+.loginCard{
+  width:min(520px, 94vw);
+  background:#ffffff;
+  border-radius:16px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.28);
+  padding: 30px 28px 24px;
+}
+
+.loginBrand{
+  font-weight:800;
+  letter-spacing:0.2px;
+  color:#0f8b83;
+  font-size:14px;
+  text-transform:uppercase;
+}
+
+.loginTitle{
+  margin-top:10px;
+  font-size:26px;
+  font-weight:900;
+  color:#111827;
+}
+
+.loginSub{
+  margin-top:6px;
+  color:#6b7280;
+  font-size:14px;
+  line-height:1.4;
+}
+
+.loginForm{
+  margin-top:18px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.loginLabel{
+  font-size:13px;
+  font-weight:700;
+  color:#374151;
+  margin-top:8px;
+}
+
+.loginInput{
+  height:44px;
+  border-radius:12px;
+  border:1px solid #e5e7eb;
+  padding: 0 14px;
+  font-size:14px;
+  outline:none;
+}
+
+.loginInput:focus{
+  border-color:#0f8b83;
+  box-shadow:0 0 0 3px rgba(15,139,131,.12);
+}
+
+.loginError{
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#fef2f2;
+  border:1px solid #fecaca;
+  color:#b91c1c;
+  font-weight:700;
+  font-size:13px;
+}
+
+.loginBtn{
+  margin-top:14px;
+  height:46px;
+  border:none;
+  border-radius:999px;
+  background:#0f8b83;
+  color:#fff;
+  font-weight:900;
+  font-size:15px;
+  cursor:pointer;
+}
+
+.loginBtn:hover{
+  filter: brightness(0.95);
+}
+
+.loginHint{
+  margin-top:10px;
+  color:#9ca3af;
+  font-size:12px;
+  text-align:center;
+  line-height:1.35;
+}
+
+/* ==========================
+   UPLOAD OVERLAY (NEW)
+   ========================== */
+.cclUploadOverlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.35);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+}
+
+.cclUploadBox{
+  width: min(520px, 92vw);
+  background: #fff;
+  border-radius: 14px;
+  padding: 26px 22px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.25);
+  text-align: center;
+}
+
+.cclUploadSpinner{
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 12px;
+  border-radius: 999px;
+  border: 4px solid rgba(15,139,131,.2);
+  border-top-color: rgba(15,139,131,1);
+  animation: cclSpin 0.8s linear infinite;
+}
+
+@keyframes cclSpin { to { transform: rotate(360deg);} }
+
+.cclUploadTitle{
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.cclUploadPct{
+  font-size: 20px;
+  font-weight: 900;
+  color: #0f8b83;
+  margin-bottom: 10px;
+}
+
+.cclUploadBar{
+  height: 10px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.cclUploadBarFill{
+  height: 100%;
+  width: 0%;
+  background: #0f8b83;
+  border-radius: 999px;
+  transition: width .15s ease;
+}
+
+.cclUploadHint{
+  margin-top: 10px;
+  font-size: 13px;
+  color: #6b7280;
+}
