@@ -69,9 +69,11 @@ export async function onRequest(context) {
   const { request, env, next } = context;
   const url = new URL(request.url);
 
-  // Protect listing + mock pages
   const isIndex = url.pathname === "/" || url.pathname === "/index.html";
-  const isMock = /^\/mock-\d+\.html$/.test(url.pathname);
+  const isMock =
+    /^\/mock-\d+$/.test(url.pathname) ||
+    /^\/mock-\d+\.html$/.test(url.pathname) ||
+    /^\/mock-\d+\/$/.test(url.pathname);
 
   if (!(isIndex || isMock)) return next();
 
@@ -82,8 +84,14 @@ export async function onRequest(context) {
   const v = await verifyToken(token, secret);
   if (!v.ok) return deny();
 
-  // IMPORTANT: token must match the page path exactly
-  if (String(v.payload.allowed || "") !== url.pathname) return deny();
+  function normalizePath(p) {
+    return String(p || "").replace(/\/$/, "").replace(/\.html$/, "");
+  }
+
+  if (normalizePath(v.payload.allowed) !== normalizePath(url.pathname)) return deny();
 
   return next();
 }
+
+}
+
