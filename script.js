@@ -78,6 +78,64 @@ document.addEventListener("DOMContentLoaded", async () => {
   function saveCandidateToStorage(candidate) {
     localStorage.setItem("ccl_candidate", JSON.stringify(candidate));
   }
+
+  // ==========================
+  // PROGRESS PERSISTENCE (NEW)
+  // ==========================
+  const STATE_KEY = "ccl_state";
+  let _saveStateScheduled = false;
+
+  function saveState() {
+    if (!CANDIDATE) return;
+    // Debounce to avoid hammering localStorage during rapid changes
+    if (_saveStateScheduled) return;
+    _saveStateScheduled = true;
+    requestAnimationFrame(() => {
+      _saveStateScheduled = false;
+      try {
+        const state = {
+          folder: CANDIDATE.folder,
+          currentIndex,
+          attempts: Object.fromEntries(attemptsBySegId),
+          finished: Object.fromEntries(finishedOnceBySegId),
+          opened: Object.fromEntries(openedBySegId),
+          answered: Object.fromEntries(answeredBySegId),
+          inEndFlow,
+          savedAt: Date.now(),
+        };
+        localStorage.setItem(STATE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.warn("saveState failed", e);
+      }
+    });
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STATE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch { return null; }
+  }
+
+  function clearState() {
+    try { localStorage.removeItem(STATE_KEY); } catch {}
+  }
+
+  function applyState(s) {
+    if (!s) return;
+    attemptsBySegId.clear();
+    finishedOnceBySegId.clear();
+    openedBySegId.clear();
+    answeredBySegId.clear();
+    for (const [k, v] of Object.entries(s.attempts || {})) attemptsBySegId.set(k, v);
+    for (const [k, v] of Object.entries(s.finished || {})) finishedOnceBySegId.set(k, v);
+    for (const [k, v] of Object.entries(s.opened || {})) openedBySegId.set(k, v);
+    for (const [k, v] of Object.entries(s.answered || {})) answeredBySegId.set(k, v);
+    if (typeof s.currentIndex === "number") {
+      currentIndex = Math.max(0, Math.min((window.CCL_MOCK?.segments?.length || 14) - 1, s.currentIndex));
+    }
+  }
 // ==========================
 // UPLOAD OVERLAY (NEW)
 // ==========================
@@ -181,14 +239,12 @@ function hideUploadOverlay(finalTitle) {
   const answeredBySegId = new Map();          // segId -> true once uploaded successfully
   let inEndFlow = false;
 
-  // audio playback element
-  const sourceAudio = new Audio();
-  sourceAudio.preload = "auto";
-  sourceAudio.crossOrigin = "anonymous";
-
-  // audio decoding for waveform
+  // audio decoding for waveform AND playback (single source of truth)
   let audioCtx = null;
   let decodedBuffer = null;
+  let currentSource = null;       // active AudioBufferSourceNode
+  let playStartCtxTime = 0;       // audioCtx.currentTime when play() was called
+  let playEndedHandled = false;   // guard against double-fire of onended
   // ===== PRELOAD CACHE (NEW) =====
 const decodedCache = new Map(); // audioUrl -> AudioBuffer
 const preloadJobs = new Map();  // audioUrl -> Promise<AudioBuffer>
@@ -932,6 +988,7 @@ function preloadDecode(url) {
   function setAttemptsForCurrent(n) {
     attemptsBySegId.set(currentSegId(), n);
     attemptsEl.textContent = String(n);
+    saveState();
   }
 
   function getFinishedOnceForCurrent() {
@@ -940,6 +997,7 @@ function preloadDecode(url) {
 
   function setFinishedOnceForCurrent(v) {
     finishedOnceBySegId.set(currentSegId(), v);
+    saveState();
   }
 
   // ------- segment load -------
@@ -951,8 +1009,12 @@ statusMsg.textContent = "Loading audio…";
     stopAnim();
     uiIdle();
 
-    sourceAudio.pause();
-    sourceAudio.currentTime = 0;
+    // Stop any in-flight playback if user navigates mid-play
+    if (currentSource) {
+      try { currentSource.onended = null; currentSource.stop(); } catch {}
+      try { currentSource.disconnect(); } catch {}
+      currentSource = null;
+    }
 
     decodedBuffer = null;
     resetRecCanvas();
@@ -970,14 +1032,13 @@ statusMsg.textContent = "Loading audio…";
 
     // ===== mark opened (NEW) =====
     openedBySegId.set(SEGMENTS[idx].id, true);
+    saveState();
 
     setAttemptsForCurrent(getAttemptsForCurrent());
     tLeft.textContent = "0:00";
     tRight.textContent = "0:00";
 
     const seg = SEGMENTS[idx];
-    sourceAudio.src = seg.audioUrl;
-    sourceAudio.load();
 
     try {
   decodedBuffer = await getDecoded(seg.audioUrl);   // ✅ uses cache / preload
@@ -988,7 +1049,8 @@ statusMsg.textContent = "";
   tRight.textContent = fmtTime(decodedBuffer.duration);
 } catch (e) {
   console.error(e);
-  statusMsg.textContent = "Audio failed to load. Check the link / CORS.";
+  statusMsg.textContent = "Audio failed to load. Please check your connection and click Next/Prev again.";
+  btnStartMain.disabled = true;
   wctx.clearRect(0, 0, waveCanvas.width, waveCanvas.height);
   wctx.fillStyle = "#f4f6f8";
   wctx.fillRect(0, 0, waveCanvas.width, waveCanvas.height);
@@ -1008,32 +1070,55 @@ if (next?.audioUrl) preloadDecode(next.audioUrl);
       return;
     }
 
+    // Lazy init audioCtx INSIDE the user-gesture handler to satisfy autoplay policies
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") {
+      try { await audioCtx.resume(); } catch (e) { console.warn("audioCtx.resume failed", e); }
+    }
+
+    // Stop any previous playback cleanly
+    if (currentSource) {
+      try { currentSource.onended = null; currentSource.stop(); } catch {}
+      try { currentSource.disconnect(); } catch {}
+      currentSource = null;
+    }
+
     uiPlaying();
     resetRecCanvas();
     statusMsg.textContent = "";
 
-    if (audioCtx && audioCtx.state === "suspended") {
-      await audioCtx.resume();
-    }
+    currentSource = audioCtx.createBufferSource();
+    currentSource.buffer = decodedBuffer;
+    currentSource.connect(audioCtx.destination);
 
-    sourceAudio.currentTime = 0;
+    playEndedHandled = false;
+    currentSource.onended = () => {
+      if (playEndedHandled) return;
+      playEndedHandled = true;
+      stopAnim();
+      tLeft.textContent = fmtTime(decodedBuffer?.duration || 0);
+      try { currentSource && currentSource.disconnect(); } catch {}
+      currentSource = null;
+      startRecordingAuto();
+    };
 
     try {
-      await sourceAudio.play();
+      currentSource.start(0);
+      playStartCtxTime = audioCtx.currentTime;
     } catch (e) {
       console.error(e);
-      statusMsg.textContent = "Playback blocked. Click Start again.";
+      statusMsg.textContent = "Playback failed. Click Start again.";
       uiIdle();
       return;
     }
 
     const tick = () => {
       const dur = decodedBuffer.duration || 0;
-      const ct = sourceAudio.currentTime || 0;
-      tLeft.textContent = fmtTime(ct);
-      drawPlayhead(dur ? (ct / dur) : 0);
+      const ct = Math.max(0, audioCtx.currentTime - playStartCtxTime);
+      tLeft.textContent = fmtTime(Math.min(ct, dur));
+      drawPlayhead(dur ? Math.min(1, ct / dur) : 0);
 
-      if (!sourceAudio.paused && !sourceAudio.ended) {
+      if (currentSource && ct < dur) {
         playRAF = requestAnimationFrame(tick);
       }
     };
@@ -1141,6 +1226,7 @@ try {
   showUploadOverlay(100, "Upload successful ✓");
   statusMsg.textContent = `Saved ✓ (uploaded)`;
   answeredBySegId.set(seg.id, true);
+  saveState();
 } catch (e) {
   console.error(e);
   statusMsg.textContent = "Upload failed. Check link / CORS.";
@@ -1238,11 +1324,7 @@ try {
     }
   });
 
-  sourceAudio.addEventListener("ended", () => {
-    stopAnim();
-    tLeft.textContent = fmtTime(decodedBuffer?.duration || 0);
-    startRecordingAuto();
-  });
+  // Note: end-of-audio is handled by currentSource.onended in startPlaybackFresh
 
   // ==========================
   // CAMERA/MIC + INIT START (CHANGED to occur AFTER login)
@@ -1269,7 +1351,57 @@ try {
   }
 
   // ==========================
-  // LOGIN FLOW (NEW)
+  // RESUME PROMPT (NEW)
+  // ==========================
+  function showResumePrompt(savedState, candidate) {
+    return new Promise((resolve) => {
+      const ans = Object.values(savedState.answered || {}).filter(Boolean).length;
+      const total = SEGMENTS.length;
+      const segNum = (savedState.currentIndex || 0) + 1;
+
+      const overlay = document.createElement("div");
+      overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:10001;";
+      overlay.innerHTML = `
+        <div style="width:min(480px,92vw);background:#fff;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.25);padding:28px 26px;text-align:center;font-family:inherit;">
+          <h2 style="margin:0 0 10px;font-size:24px;font-weight:800;color:#111827;">Welcome back, ${candidate.fullName.split(" ")[0]}</h2>
+          <p style="margin:0 0 20px;color:#4b5563;font-size:15px;line-height:1.6;">
+            We found your previous session.<br>
+            <b>${ans}/${total}</b> segments answered. You were on <b>Segment ${segNum}</b>.
+          </p>
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+            <button id="cclResumeBtn" style="background:#0f8b83;border:none;color:#fff;font-weight:800;border-radius:999px;padding:12px 26px;cursor:pointer;font-size:14px;">Resume session</button>
+            <button id="cclFreshBtn" style="background:transparent;border:1.5px solid #d1d5db;color:#111827;font-weight:700;border-radius:999px;padding:12px 22px;cursor:pointer;font-size:14px;">Start over</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      overlay.querySelector("#cclResumeBtn").addEventListener("click", () => {
+        document.body.removeChild(overlay);
+        resolve(true);
+      });
+      overlay.querySelector("#cclFreshBtn").addEventListener("click", () => {
+        if (!confirm("Start over? All previous progress on this device will be cleared.")) return;
+        document.body.removeChild(overlay);
+        resolve(false);
+      });
+    });
+  }
+
+  // ==========================
+  // BEFOREUNLOAD GUARD (NEW)
+  // Prevent accidental refresh during recording or upload
+  // ==========================
+  window.addEventListener("beforeunload", (e) => {
+    if (isRecording || isUploading) {
+      e.preventDefault();
+      e.returnValue = "Recording or upload in progress. Are you sure you want to leave?";
+      return e.returnValue;
+    }
+  });
+
+  // ==========================
+  // LOGIN FLOW (FIXED — no longer wipes candidate on refresh)
   // ==========================
   CANDIDATE = null;
 
@@ -1284,10 +1416,29 @@ try {
     return;
   }
 
-  // IMPORTANT: show login on every load (as you requested)
-  localStorage.removeItem("ccl_candidate");
-  CANDIDATE = null;
+  // Try to restore previous candidate + state
+  const storedCandidate = loadCandidateFromStorage();
+  const storedState = loadState();
 
+  if (storedCandidate && storedState && storedState.folder === storedCandidate.folder) {
+    // Existing session — offer to resume
+    CANDIDATE = storedCandidate;
+    hideLogin();
+
+    const resume = await showResumePrompt(storedState, storedCandidate);
+    if (resume) {
+      applyState(storedState);
+    } else {
+      clearState();
+      currentIndex = 0;
+    }
+
+    await requestCameraMic();
+    await startAppAfterLogin();
+    return;
+  }
+
+  // No valid session → show the login form
   showLogin();
   uiIdle();
   resetRecCanvas();
@@ -1308,6 +1459,7 @@ try {
 
     CANDIDATE = { fullName, email, whatsapp, folder };
     saveCandidateToStorage(CANDIDATE);
+    clearState(); // fresh start
 
     hideLogin();
 
